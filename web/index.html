@@ -11,9 +11,14 @@
     <span class="comment-count" id="comment-count">코멘트 없음</span>
     <button type="button" id="submit-btn">진행</button>
   </header>
+  <aside class="revision-sidebar" id="revision-sidebar" hidden>
+    <header class="revision-sidebar-header">이전 라운드 코멘트</header>
+    <div class="revision-sidebar-body" id="revision-body"></div>
+  </aside>
   <main class="md-doc" id="doc">
     __CONTENT__
   </main>
+  <script type="application/json" id="revision-data">__REVISION_REPORT_JSON__</script>
   <script type="module" src="/app.bundle.js"></script>
 </body>
 </html>

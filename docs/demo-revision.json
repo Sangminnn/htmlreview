@@ -1,0 +1,48 @@
+{
+  "@context": "http://www.w3.org/ns/anno.jsonld",
+  "rounds": [
+    {
+      "label": "1차 코멘트",
+      "items": [
+        {
+          "type": "Annotation",
+          "id": "urn:htmlreview:annotation:0a1b2c3d-4e5f-6789-abcd-ef0123456789",
+          "motivation": "commenting",
+          "body": [
+            { "type": "TextualBody", "value": "토큰 갱신 정책(만료 임박 자동 재발급 / 강제 회전)도 표에 명시되면 좋겠음", "purpose": "commenting" },
+            { "type": "TextualBody", "value": "재발급 정책 칼럼 추가 + 회전 트리거 조건 문서화", "purpose": "describing" }
+          ],
+          "target": {
+            "source": "urn:htmlreview:doc:demo",
+            "format": "text/markdown",
+            "selector": {
+              "type": "TextQuoteSelector",
+              "exact": "JwtVerifier",
+              "prefix": "리팩토링 계획 2. 제안 컴포넌트 책임 ",
+              "suffix": " 토큰 검증·갱신 SessionStore"
+            }
+          }
+        },
+        {
+          "type": "Annotation",
+          "id": "urn:htmlreview:annotation:1b2c3d4e-5f60-7890-bcde-f01234567890",
+          "motivation": "commenting",
+          "body": [
+            { "type": "TextualBody", "value": "한번에 슬림화하면 호출처 50곳이 깨짐 — deprecated alias 유지 단계가 별도 step 필요", "purpose": "commenting" },
+            { "type": "TextualBody", "value": "step 4 를 4a(위임) / 4b(alias 유지 6주) / 4c(alias 제거) 로 분리", "purpose": "describing" }
+          ],
+          "target": {
+            "source": "urn:htmlreview:doc:demo",
+            "format": "text/markdown",
+            "selector": {
+              "type": "TextQuoteSelector",
+              "exact": "AuthService 슬림화",
+              "prefix": "3. 단계 ",
+              "suffix": " JwtVerifier 도입 SessionStore 교체"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

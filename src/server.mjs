@@ -21,6 +21,11 @@ const WEB_DIR = join(__dirname, "..", "web");
 const escapeHtml = (s) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+const LS = String.fromCharCode(0x2028);
+const PS = String.fromCharCode(0x2029);
+const escapeForScriptTag = (json) =>
+  json.replace(/</g, "\\u003c").split(LS).join("\\u2028").split(PS).join("\\u2029");
+
 const readWebFile = (name) => readFile(join(WEB_DIR, name), "utf8");
 
 const readJsonBody = (req) =>
@@ -102,9 +107,11 @@ export const runReview = async (opts) => {
     readWebFile("app.bundle.js.map").catch(() => null),
   ]);
 
+  const revisionJson = JSON.stringify(opts.revisionReport ?? null);
   const page = indexHtml
     .replaceAll("__TITLE__", escapeHtml(opts.title))
-    .replace("__CONTENT__", bodyHtml);
+    .replace("__CONTENT__", bodyHtml)
+    .replace("__REVISION_REPORT_JSON__", escapeForScriptTag(revisionJson));
 
   return new Promise((resolve, reject) => {
     let resolved = false;

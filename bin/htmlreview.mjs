@@ -15,6 +15,8 @@ Options:
   --port <n>                  HTTP port (default: random ephemeral)
   --no-open                   Don't auto-open browser
   --input-format <md|html>    Force input format (default: inferred from extension; "md" for stdin)
+  --revision-report <file>    Previous-round comments as W3C AnnotationCollection JSON.
+                              Renders left sidebar + in-content "변경됨" badges.
   --timeout <s>               Auto-fail if no submission within N seconds
   -v, --version               Show version
   -h, --help                  Show this help
@@ -70,6 +72,7 @@ const main = async () => {
         port: { type: "string" },
         "no-open": { type: "boolean" },
         "input-format": { type: "string" },
+        "revision-report": { type: "string" },
         timeout: { type: "string" },
         help: { type: "boolean", short: "h" },
         version: { type: "boolean", short: "v" },
@@ -114,6 +117,21 @@ const main = async () => {
     process.exit(1);
   }
 
+  let revisionReport = null;
+  if (values["revision-report"]) {
+    const reportPath = values["revision-report"];
+    if (!(await fileExists(reportPath))) {
+      process.stderr.write(`error: revision-report file not found: ${reportPath}\n`);
+      process.exit(1);
+    }
+    try {
+      revisionReport = JSON.parse(await readFile(reportPath, "utf8"));
+    } catch (err) {
+      process.stderr.write(`error: invalid revision-report JSON: ${err.message}\n`);
+      process.exit(1);
+    }
+  }
+
   const format = inferFormat(file, values["input-format"]);
   if (format === "text/html") {
     // M6 진입 전까지 HTML 입력은 sanitize 없이 그대로 통과 — 신뢰된 입력 가정
@@ -140,6 +158,7 @@ const main = async () => {
       port,
       openBrowser: !values["no-open"],
       timeoutMs: Math.floor(timeoutSec * 1000),
+      revisionReport,
     });
     process.stdout.write(JSON.stringify(result) + "\n");
     process.exit(0);

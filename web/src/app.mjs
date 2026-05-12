@@ -209,3 +209,113 @@ submitBtn.addEventListener("click", async () => {
 });
 
 updateCount();
+
+// ───── revision-report — 직전 라운드 코멘트 사이드바 + 본문 뱃지 ─────
+
+const escapeText = (s) =>
+  (s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const readRevisionReport = () => {
+  const tag = document.getElementById("revision-data");
+  if (!tag) return null;
+  try {
+    const parsed = JSON.parse(tag.textContent || "null");
+    if (!parsed || !Array.isArray(parsed.rounds) || parsed.rounds.length === 0) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const renderRevisionCard = (item, idx, onClick) => {
+  const card = document.createElement("article");
+  card.className = "revision-card";
+  card.dataset.idx = String(idx);
+  const body = Array.isArray(item.body) ? item.body : [];
+  const comment = body.find((b) => b?.purpose === "commenting")?.value || "";
+  const resolution = body.find((b) => b?.purpose === "describing")?.value || "";
+  const quote = item?.target?.selector?.exact || "";
+  card.innerHTML = `
+    ${quote ? `<div class="revision-card-quote">${escapeText(quote)}</div>` : ""}
+    <div class="revision-card-section">
+      <div class="revision-card-label">코멘트</div>
+      <div class="revision-card-text">${comment ? escapeText(comment) : "<em>(없음)</em>"}</div>
+    </div>
+    <div class="revision-card-section">
+      <div class="revision-card-label">반영</div>
+      <div class="revision-card-text">${resolution ? escapeText(resolution) : "<em>(없음)</em>"}</div>
+    </div>
+  `;
+  card.addEventListener("click", onClick);
+  return card;
+};
+
+const renderRevisionMark = (item, idx, onClick) => {
+  const range = resolveSelector(docEl, item?.target?.selector);
+  if (!range) return null;
+  const mark = document.createElement("button");
+  mark.type = "button";
+  mark.className = "revision-mark";
+  mark.dataset.idx = String(idx);
+  mark.textContent = "변경됨";
+  mark.setAttribute("aria-label", "변경된 위치 — 코멘트 보기");
+  try {
+    const insertion = range.cloneRange();
+    insertion.collapse(true);
+    insertion.insertNode(mark);
+  } catch {
+    return null;
+  }
+  mark.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  return mark;
+};
+
+const activateCard = (card, allCards) => {
+  allCards.forEach((c) => c.classList.remove("is-active"));
+  card.classList.add("is-active");
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+};
+
+const flashMark = (mark) => {
+  mark.classList.remove("flash");
+  void mark.offsetWidth;
+  mark.classList.add("flash");
+  mark.scrollIntoView({ behavior: "smooth", block: "center" });
+};
+
+const renderRevisionReport = (report) => {
+  const sidebar = document.getElementById("revision-sidebar");
+  const bodyEl = document.getElementById("revision-body");
+  if (!sidebar || !bodyEl) return;
+  const latest = report.rounds[0];
+  if (!latest || !Array.isArray(latest.items) || latest.items.length === 0) return;
+
+  sidebar.hidden = false;
+  document.body.classList.add("has-revision");
+
+  const cards = [];
+  const marks = [];
+
+  // 1) 카드 먼저 만들기 — 마크 삽입이 본문 textContent 를 바꾸기 전에 selector resolve 가 안정
+  latest.items.forEach((item, idx) => {
+    const card = renderRevisionCard(item, idx, () => {
+      const mark = marks[idx];
+      if (mark) flashMark(mark);
+    });
+    bodyEl.appendChild(card);
+    cards.push(card);
+  });
+
+  // 2) 마크는 본문에 차례로 삽입 — 각 item.target.selector 를 resolveSelector 로 위치 찾음
+  latest.items.forEach((item, idx) => {
+    const card = cards[idx];
+    const mark = renderRevisionMark(item, idx, () => activateCard(card, cards));
+    marks.push(mark);
+  });
+};
+
+const revisionReport = readRevisionReport();
+if (revisionReport) renderRevisionReport(revisionReport);
