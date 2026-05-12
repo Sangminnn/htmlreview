@@ -19,6 +19,7 @@
   ],
   "scripts": {
     "test": "node --test scripts/test-selector.mjs scripts/test-renderer.mjs",
+    "build:client": "esbuild web/src/app.mjs --bundle --outfile=web/app.bundle.js --format=esm --target=es2020 --sourcemap",
     "smoke": "node scripts/smoke.mjs",
     "capture": "node scripts/capture.mjs"
   },
@@ -53,6 +54,7 @@
     "sanitize-html": "^2.13.0"
   },
   "devDependencies": {
+    "esbuild": "^0.28.0",
     "jsdom": "^29.1.1",
     "playwright": "^1.59.1"
   }
