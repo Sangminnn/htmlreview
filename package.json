@@ -18,7 +18,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "test": "node --test scripts/test-selector.mjs",
+    "test": "node --test scripts/test-selector.mjs scripts/test-renderer.mjs",
     "smoke": "node scripts/smoke.mjs",
     "capture": "node scripts/capture.mjs"
   },
