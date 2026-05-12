@@ -133,10 +133,6 @@ const main = async () => {
   }
 
   const format = inferFormat(file, values["input-format"]);
-  if (format === "text/html") {
-    // M6 진입 전까지 HTML 입력은 sanitize 없이 그대로 통과 — 신뢰된 입력 가정
-    process.stderr.write("warning: HTML input is not yet sanitized (M6 진입 전). Trust source.\n");
-  }
 
   const port = values.port ? parseInt(values.port, 10) : 0;
   if (Number.isNaN(port) || port < 0 || port > 65535) {

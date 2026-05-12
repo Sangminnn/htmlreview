@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 
 import { renderMarkdownToHtml } from "./renderer.mjs";
+import { sanitizeHtmlInput } from "./sanitize.mjs";
 import { buildAnnotation, computeSourceUrn } from "./annotation.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -89,10 +90,7 @@ const closeBrowserTabsMacOS = (url) => {
 
 const renderInput = (input, format) => {
   if (format === "text/markdown") return renderMarkdownToHtml(input);
-  if (format === "text/html") {
-    // M6 에서 sanitize-html 적용 예정. 현재 raw 통과 → 신뢰된 입력 가정.
-    return input;
-  }
+  if (format === "text/html") return sanitizeHtmlInput(input);
   throw new Error(`unsupported format: ${format}`);
 };
 
