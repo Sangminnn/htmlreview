@@ -336,21 +336,18 @@ W3C `SvgSelector` 그대로. SVG 클립을 inline 으로 보존하면 figure 안
 
 `rounds[0]` = 가장 최근. `body[].purpose` 로 코멘트 vs 반영 내역 구분.
 
-### 6.3 v1 → v2 — breaking change
+### 6.3 mdreview v1.x 와의 차이 (참고)
 
-v2.0 에서 다음 v1 필드 **완전 제거**:
+htmlreview v1.0 의 schema 는 mdreview v1.x 에서 다음 필드들을 *제거*한 결과다:
 
 - `anchor.headingPath` / `anchor.blockIndex` / `anchor.contentHash`
 - `kind` (block / range)
 - `blockText`
-- `selectedText` (top-level — `TextQuoteSelector.exact` 로 흡수)
+- `selectedText` (top-level) → `TextQuoteSelector.exact` 로 흡수
 - revision-report 의 `anchorHint` / `resolvedAnchorHint`
-- annotation `id` 의 `b{n}-r...` 패턴 (URN ULID 로 교체)
+- annotation `id` 의 `b{n}-r...` 패턴 → `urn:htmlreview:annotation:<uuid-v4>`
 
-소비자측 (Claude Code skill, reviewer.md 절차) 도 같은 시점에 v2 schema 로 갱신해야 한다. 메이저 bump 정당화:
-- 양식 자체가 변함 (필드명·구조 변경 ≥ 5개)
-- 1.1.0 도 아직 npm publish 전 → 실사용 다운스트림 깨지는 영향 거의 없음
-- 한 번에 갈아엎는 게 dual-output 유지 부담보다 작음
+mdreview v1.x payload 를 htmlreview 가 직접 받지 않는다 — 두 도구는 별개 프로젝트. 마이그레이션이 필요하면 변환 스크립트를 사용자가 작성.
 
 ---
 

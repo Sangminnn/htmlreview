@@ -1,6 +1,6 @@
 {
   "name": "htmlreview",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Local web review for markdown and HTML documents — Claude Code skill for human-in-the-loop planning (W3C Web Annotation based)",
   "type": "module",
   "bin": {

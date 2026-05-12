@@ -1,48 +1,131 @@
 # htmlreview
 
-Local web review for markdown and HTML documents.
-A Claude Code skill for human-in-the-loop planning, built on the
-[W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/).
+> Local web review gate for markdown and HTML documents.
+> A Claude Code skill for human-in-the-loop planning, built on the
+> [W3C Web Annotation Data Model](https://www.w3.org/TR/annotation-model/).
 
-> **Status:** pre-release (v0.1.0 — under active development).
-> Founding design: [`docs/design.md`](docs/design.md).
->
-> **Origin:** reframe of [mdreview](https://github.com/sangminnn/mdreview) v1.x,
-> moving from the markdown-only `block`/`range` dual model to a single
-> `Selector`-based model that handles markdown, HTML, and (Phase 2) SVG / code /
-> table cells with the same anchoring algorithm.
+Open a plan in the browser, let the reviewer highlight any text and attach a
+comment (optionally with images), and pull back a **W3C `AnnotationCollection`
+JSON** when they click *진행*. The result is interoperable with any standards-
+conformant annotation tool — no bespoke JSON shape.
 
-## Why
+Origin: reframe of [mdreview](https://github.com/sangminnn/mdreview) v1.x —
+single Selector model, HTML input, fuzzy-text resilience via Hypothesis
+[`dom-anchor-text-quote`](https://github.com/hypothesis/dom-anchor-text-quote).
+Full founding design: [`docs/design.md`](docs/design.md).
 
-`mdreview` v1.x worked well for markdown plan review, but had five structural
-limits — block definition tied to the markdown parser, a redundant
-`block`/`range` dual mode, position-dependent anchors that broke on minor
-document edits, no HTML input, and an ad-hoc `anchorHint` text-search escape
-hatch.
+## Install
 
-`htmlreview` reframes the model around **one Selector type** (W3C
-`TextQuoteSelector` / `RangeSelector` / `FragmentSelector` / `XPathSelector` /
-`CssSelector` / `SvgSelector`) with a fuzzy-text fallback chain (`refinedBy`),
-using the production-tested Hypothesis [`dom-anchor-text-quote`](https://github.com/hypothesis/dom-anchor-text-quote)
-algorithm. The submit payload is a valid W3C `Annotation` — interoperable with
-any standard-conformant annotation tool.
+```bash
+npm install -g htmlreview
+```
 
-## Quick start
+Node ≥ 18 required.
 
-> coming soon (Milestone M7)
+## CLI
 
-## Milestones
+```bash
+htmlreview plan.md
+htmlreview plan.md --title "Refactor plan" --timeout 600
+cat plan.md | htmlreview --input-format md
 
-| M | Description | Status |
+# HTML input (sanitized by sanitize-html)
+htmlreview design.html
+
+# Multi-round — show previous round's comments + your resolutions in sidebar
+htmlreview revised.md --revision-report round-1.json
+```
+
+| Option | Default | Notes |
 |---|---|---|
-| M0 | Schema design ([docs/design.md](docs/design.md)) | ✅ |
-| M1 | `src/selector.mjs` + unit tests | ⏳ |
-| M2 | Semantic HTML renderer | ⏳ |
-| M3 | Client UI rewrite (selector-based) | ⏳ |
-| M4 | `bin/` + server with W3C `Annotation` payload | ⏳ |
-| M5 | revision-report v2 input schema | ⏳ |
-| M6 | HTML input + `sanitize-html` | ⏳ |
-| M7 | Docs + `CHANGELOG` 1.0.0 | ⏳ |
+| `--title <text>` | `Review` | Browser tab title |
+| `--port <n>` | random ephemeral | HTTP port |
+| `--no-open` | — | Don't auto-open browser |
+| `--input-format <md\|html>` | inferred from ext (`.md`/`.html`) | Force input format |
+| `--revision-report <file>` | — | Previous round `AnnotationCollection` JSON |
+| `--timeout <seconds>` | — | Auto-fail if no submit within N seconds |
+| `-v / --version` | — | Print version |
+| `-h / --help` | — | Print help |
+
+## Output schema
+
+A W3C-conformant `AnnotationCollection` (see [`docs/design.md`](docs/design.md) §6.1):
+
+```json
+{
+  "@context": "http://www.w3.org/ns/anno.jsonld",
+  "type": "AnnotationCollection",
+  "status": "approved" | "revision_requested",
+  "target": {
+    "source": "urn:htmlreview:doc:<sha256-16>",
+    "format": "text/markdown"
+  },
+  "items": [
+    {
+      "@context": "http://www.w3.org/ns/anno.jsonld",
+      "type": "Annotation",
+      "id": "urn:htmlreview:annotation:<uuid-v4>",
+      "motivation": "commenting",
+      "body": [
+        { "type": "TextualBody", "value": "...", "purpose": "commenting" }
+      ],
+      "target": {
+        "source": "<same source URN>",
+        "format": "text/markdown",
+        "selector": {
+          "type": "TextQuoteSelector",
+          "exact": "the selected text",
+          "prefix": "32 chars of context before",
+          "suffix": "32 chars of context after"
+        }
+      }
+    }
+  ]
+}
+```
+
+- `status` is the only htmlreview-specific extension; everything else is
+  vanilla W3C Web Annotation.
+- Image attachments appear as additional `body[]` entries with `type: "Image"`
+  and a `data:` URL value.
+
+See [`example.md`](example.md) for a full shell + `jq` example,
+[`SKILL.md`](SKILL.md) for the Claude Code skill manifest,
+and [`reviewer.md`](reviewer.md) for the multi-round workflow.
+
+## Architecture
+
+```
+bin/htmlreview.mjs   CLI: argparse, file or stdin input, --revision-report loader
+src/server.mjs       HTTP server: page build, /submit → AnnotationCollection
+src/renderer.mjs     markdown → semantic HTML + heading id slugs
+src/sanitize.mjs     HTML input sanitization (sanitize-html)
+src/selector.mjs     DOM Range ↔ W3C TextQuoteSelector (dom-anchor-text-quote)
+src/annotation.mjs   W3C Annotation envelope builder + URN computation
+web/src/app.mjs      Client: selection toolbar, comment bubble, highlight, revision sidebar
+web/index.html       Page template — __TITLE__ / __CONTENT__ / __REVISION_REPORT_JSON__
+web/style.css        Stylesheet
+web/app.bundle.js    esbuild output (~88kB, gitignored, included in npm publish)
+```
+
+## Selector resilience
+
+Annotations stay anchored as long as the `exact` text is present and the
+32-char `prefix` / `suffix` disambiguate it. When the document text changes
+substantially, a `diff-match-patch` fuzzy fallback takes over. If a selector
+cannot resolve at all, the annotation is **still in the output JSON** — only
+the in-body highlight is suppressed. See `reviewer.md` §4.
+
+## Develop
+
+```bash
+git clone https://github.com/sangminnn/htmlreview.git
+cd htmlreview
+npm install
+npm run build:client    # esbuild bundles web/src/app.mjs → web/app.bundle.js
+npm test                # 24 unit tests (node:test + jsdom)
+npm run smoke           # end-to-end: stdin → render → page → submit → stdout
+```
 
 ## License
 
