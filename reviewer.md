@@ -5,7 +5,31 @@ gate in a Claude Code agent or skill workflow.
 
 ## 1. Run the gate before executing
 
-Before executing any non-trivial plan, open it for review:
+### When to call
+
+Trigger `htmlreview` whenever the current artifact would lose information if the user only saw it as terminal text:
+
+- Non-trivial **plans / designs / reports** the agent drafted.
+- User says **"see it visually" / "검토 띄워줘" / "직관적으로 보여줘"** (or equivalent).
+- The agent judges that *text-only ping-pong is losing structural information* — tables, flows, side-by-side comparisons, interactive demos.
+
+### Author for the page, not the terminal
+
+Markdown is fine for simple text, but prefer richer HTML when it earns its keep:
+
+| Intent | Use |
+|---|---|
+| comparisons | `<table>` or `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">` |
+| flow · architecture · sequence | inline `<svg>` with `<rect>` / `<line>` / `marker-end` |
+| long reasoning · alternatives · FAQ | `<details><summary>…</summary>…</details>` |
+| tabs without JS | `<input type="radio">` + `<label>` + CSS `:checked` |
+| interactive demo (slider / drag / live re-render) | `<iframe sandbox="allow-scripts" srcdoc="…self-contained HTML+JS…"></iframe>` |
+
+See [`SKILL.md`](SKILL.md) §Authoring guidance for the full intent→element mapping. Heading id slugs are auto-generated (incl. Korean) so deep links `[해당 섹션](#slug)` work.
+
+### Open the gate
+
+Then open the artifact for review:
 
 ```bash
 echo "$PLAN_MARKDOWN" | htmlreview --title "Plan review" --timeout 600
