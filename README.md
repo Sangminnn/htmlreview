@@ -143,12 +143,21 @@ npm run smoke           # end-to-end: stdin → render → page → submit → s
 npm run capture         # Playwright captures 3 screenshots → docs/screenshots/
 ```
 
-## Inspired by
+## Founding idea — *why this project exists*
+
+The whole premise comes from one essay:
+
+**[Thariq, "HTML Effectiveness"](https://thariqs.github.io/html-effectiveness/)** — an AI agent produced twenty self-contained `.html` files instead of markdown walls, and the documents got *read* rather than *skimmed*. The argument: when agents use HTML's native superpowers — **spatial layout, live render, collapsible/tabbed structure, throwaway interaction** — their artifacts stop being skim-bait and start being usable. Side-by-side comparisons, inline SVG diagrams, slider-tuned animations, drag-to-rank ticket boards — none of these translate to a terminal text wall.
+
+**htmlreview is the reviewer's gate for those artifacts.** The agent emits the rich HTML; the user reviews it in their browser, highlights anything, attaches images; the result comes back as a W3C-conformant `AnnotationCollection` the agent can act on. The next round, your resolutions appear inline as "변경됨" badges next to the original comments.
+
+Without Thariq's essay framing the problem, this project would still be `mdreview` — a markdown-only review gate. With it, every choice (W3C selectors, HTML input, sandboxed iframes for interactivity, figure-wrapped diagrams) lines up.
+
+## Built on
 
 - [**mdreview**](https://github.com/sangminnn/mdreview) — the markdown-only predecessor. htmlreview replaces its `block` / `range` dual model with a single `Selector` and extends input to HTML.
 - [**W3C Web Annotation Data Model**](https://www.w3.org/TR/annotation-model/) — the schema this project speaks natively. No bespoke JSON shape; the result is federation-ready.
 - [**Hypothesis `dom-anchor-text-quote`**](https://github.com/hypothesis/dom-anchor-text-quote) — production-tested DOM Range ↔ TextQuoteSelector anchoring with `diff-match-patch` fuzzy matching.
-- [**Thariq's "HTML Effectiveness"**](https://thariqs.github.io/html-effectiveness/) — the argument that agents producing self-contained HTML artifacts (with spatial layout, live render, collapsibles, throwaway interactions) get *read* rather than *skimmed*. htmlreview is the reviewer's gate for those artifacts.
 
 ## License
 

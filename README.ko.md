@@ -131,12 +131,21 @@ npm run smoke           # end-to-end: stdin → render → 페이지 → submit 
 npm run capture         # Playwright 로 스크린샷 3장 → docs/screenshots/
 ```
 
-## Inspired by
+## Founding idea — *이 프로젝트가 왜 존재하는가*
+
+전제는 한 글에서 옵니다:
+
+**[Thariq, "HTML Effectiveness"](https://thariqs.github.io/html-effectiveness/)** — 어떤 AI 에이전트가 markdown 벽 대신 *self-contained* `.html` 파일 20개를 만들었더니, 사람들이 *skim* 이 아니라 *read* 했다는 관찰. 핵심 주장: 에이전트가 HTML 의 고유 역량 — **공간 배치, live 렌더, collapsible/tabbed 구조, throwaway 인터랙션** — 을 활용하면 산출물이 *skim-bait* 가 아닌 *usable* 한 도구가 됨. side-by-side 비교, 인라인 SVG 다이어그램, slider 로 조정하는 애니메이션, drag 로 순위 매기는 ticket 보드 — 이 중 어느 것도 터미널 텍스트 벽으로는 옮길 수 없습니다.
+
+**htmlreview 는 그런 산출물의 *리뷰어측 게이트*입니다.** 에이전트가 풍부한 HTML 을 만들면, 사용자는 브라우저에서 검토 / 어디든 코멘트 / 이미지 첨부; 결과는 W3C 표준 `AnnotationCollection` 으로 돌아와 에이전트가 다음 라운드에 활용. 그 다음 라운드에 사용자가 보면 이전 코멘트와 *반영 내역* 이 "변경됨" 뱃지로 본문에 나란히 표시.
+
+Thariq 의 글이 *문제를 정의*해주지 않았다면 이 프로젝트는 여전히 `mdreview` — markdown 전용 리뷰 게이트 — 에 머물렀을 겁니다. 그 글이 있어서 모든 선택(W3C 셀렉터 / HTML 입력 / 인터랙션용 sandbox iframe / figure-wrap 다이어그램)이 한 줄로 정렬됩니다.
+
+## Built on
 
 - [**mdreview**](https://github.com/sangminnn/mdreview) — markdown 전용 전작. htmlreview 는 `block` / `range` 이중 모델을 단일 `Selector` 로 통합하고 HTML 입력까지 확장
 - [**W3C Web Annotation Data Model**](https://www.w3.org/TR/annotation-model/) — 이 프로젝트가 그대로 따르는 표준 schema. 자체 JSON 형식 없음 → federation 가능
 - [**Hypothesis `dom-anchor-text-quote`**](https://github.com/hypothesis/dom-anchor-text-quote) — production 검증된 DOM Range ↔ TextQuoteSelector anchoring + `diff-match-patch` fuzzy 매칭
-- [**Thariq, "HTML Effectiveness"**](https://thariqs.github.io/html-effectiveness/) — *agent 가 self-contained HTML 산출물* (공간 배치 / live 렌더 / collapsible / throwaway interaction 포함) 을 만들면 *skim* 이 아니라 *read* 가 일어난다는 비전. htmlreview 는 그 산출물의 *리뷰어측 게이트*
 
 ## License
 
