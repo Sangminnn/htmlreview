@@ -38,5 +38,14 @@ export const renderMarkdownToHtml = (markdown) => {
   };
 
   const m = new Marked({ renderer });
-  return m.parse(markdown);
+  let html = m.parse(markdown);
+  // 외곽 hit 영역 확보 — table / pre / iframe 을 figure 로 wrap (BLOCK_SELECTOR 의 figure 가 잡음)
+  html = html
+    .replace(/<table>/g, '<figure class="md-table-wrap"><table>')
+    .replace(/<\/table>/g, "</table></figure>")
+    .replace(/<pre>/g, '<figure class="md-pre-wrap"><pre>')
+    .replace(/<\/pre>/g, "</pre></figure>")
+    .replace(/<iframe(\s|>)/g, '<figure class="md-iframe-wrap"><iframe$1')
+    .replace(/<\/iframe>/g, "</iframe></figure>");
+  return html;
 };

@@ -16,13 +16,35 @@ body {
   padding: 12px 24px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   z-index: 10;
 }
-.comment-count {
-  margin-right: auto;
+.topbar-title {
+  font-weight: 600;
   font-size: 14px;
-  color: #666;
+  color: #111827;
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.comment-count {
+  padding: 6px 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  background: white;
+  font-size: 13px;
+  color: #4b5563;
+  cursor: pointer;
+  font-family: inherit;
+}
+.comment-count:not(:disabled):hover { background: #f3f4f6; }
+.comment-count:disabled { cursor: default; opacity: 0.55; }
+.comment-count[aria-expanded="true"] {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
 }
 #submit-btn {
   padding: 8px 20px;
@@ -44,12 +66,49 @@ body {
   border-radius: 8px;
   border: 1px solid #e5e5e5;
 }
-.md-doc h1, .md-doc h2, .md-doc h3, .md-doc h4 {
+.md-doc h1, .md-doc h2, .md-doc h3, .md-doc h4, .md-doc h5, .md-doc h6 {
   margin-top: 1.4em;
   margin-bottom: 0.6em;
   line-height: 1.3;
+  padding: 4px 8px;
 }
 .md-doc h1:first-child { margin-top: 0; }
+
+.md-doc p,
+.md-doc blockquote,
+.md-doc figcaption {
+  padding: 4px 8px;
+}
+.md-doc li { padding: 2px 6px; }
+.md-doc ul, .md-doc ol {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.md-doc table { padding: 0; }
+/* table / pre 외곽 hit 영역 + 시각적 padding — figure wrapper 가 BLOCK_SELECTOR 매칭 */
+.md-doc figure.md-table-wrap,
+.md-doc figure.md-pre-wrap {
+  margin: 1em 0;
+  padding: 12px;
+  border-radius: 6px;
+  transition: background 120ms ease;
+}
+.md-doc figure.md-pre-wrap > pre {
+  margin: 0;
+}
+.md-doc figure.md-iframe-wrap {
+  margin: 1em 0;
+  padding: 12px;
+  border-radius: 6px;
+  transition: background 120ms ease;
+}
+.md-doc figure.md-iframe-wrap > iframe {
+  display: block;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  width: 100%;
+}
+
 .md-doc pre {
   background: #1f2937;
   color: #e5e7eb;
@@ -91,6 +150,14 @@ body {
   border-radius: 2px;
 }
 .md-doc mark.anno-mark:hover { background: #fde68a; }
+
+/* block hover affordance — "여기 코멘트 달 수 있음" 시그널 */
+.md-doc .is-hover-block {
+  background: #eff6ff;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 100ms ease;
+}
 
 .range-toolbar {
   background: #1f2937;
@@ -148,15 +215,15 @@ body {
   font-size: 13px;
   cursor: pointer;
 }
-.comment-bubble .btn-save {
+.comment-bubble .actions button.btn-save {
   background: #2563eb;
   color: white;
   border-color: #2563eb;
 }
-.comment-bubble .btn-save:hover { background: #1d4ed8; }
-.comment-bubble .btn-delete { color: #dc2626; }
-.comment-bubble .btn-cancel:hover,
-.comment-bubble .btn-delete:hover { background: #f3f4f6; }
+.comment-bubble .actions button.btn-save:hover { background: #1d4ed8; }
+.comment-bubble .actions button.btn-delete { color: #dc2626; }
+.comment-bubble .actions button.btn-cancel:hover,
+.comment-bubble .actions button.btn-delete:hover { background: #f3f4f6; }
 
 /* revision-report sidebar */
 .revision-sidebar {
@@ -234,4 +301,185 @@ body.has-revision .md-doc { margin-left: 360px; }
 @keyframes flash {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.15); background: #fbbf24; color: #1f2937; }
+}
+
+/* commented / drafted block — element 자체에 background color (mdreview .has-comment 패턴) */
+/* 저장됨 = 파란 (안정·확정), 임시저장 = 노란 (미완·주의) */
+.md-doc .has-comment {
+  background: #dbeafe;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 120ms ease;
+}
+.md-doc .has-comment:hover { background: #bfdbfe; }
+.md-doc .has-draft {
+  background: #fef3c7;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 120ms ease;
+}
+.md-doc .has-draft:hover { background: #fde68a; }
+
+/* li 는 bullet 영역까지 색 확장 (box-shadow trick — list 의 좌측 padding 안 덮음) */
+.md-doc li.has-comment { box-shadow: -1.5em 0 0 0 #dbeafe; }
+.md-doc li.has-comment:hover { box-shadow: -1.5em 0 0 0 #bfdbfe; }
+.md-doc li.has-draft { box-shadow: -1.5em 0 0 0 #fef3c7; }
+.md-doc li.has-draft:hover { box-shadow: -1.5em 0 0 0 #fde68a; }
+
+/* jumpTo 시 짧은 pulse 강조 */
+.md-doc .is-flash { animation: block-flash 0.7s ease-in-out; }
+.md-doc li.is-flash { animation: li-flash 0.7s ease-in-out; }
+@keyframes block-flash {
+  0%, 100% { background: #dbeafe; }
+  50%      { background: #60a5fa; }
+}
+@keyframes li-flash {
+  0%, 100% { background: #dbeafe; box-shadow: -1.5em 0 0 0 #dbeafe; }
+  50%      { background: #60a5fa; box-shadow: -1.5em 0 0 0 #60a5fa; }
+}
+
+/* comment-list popover */
+.comment-list-popover {
+  width: 340px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 200;
+}
+.comment-list-header {
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #374151;
+  border-bottom: 1px solid #e5e5e5;
+}
+.comment-list-body { padding: 4px; }
+.comment-list-empty {
+  padding: 16px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 13px;
+}
+.comment-list-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #374151;
+  font-family: inherit;
+}
+.comment-list-item:hover { background: #f9fafb; }
+.comment-list-quote {
+  font-size: 11px;
+  color: #2563eb;
+  font-style: italic;
+  border-left: 2px solid #93c5fd;
+  padding-left: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.comment-list-body-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.comment-list-tag {
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.comment-list-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* bubble status (저장됨 / 임시저장됨) */
+.bubble-status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.bubble-status[data-state="saved"] { color: #16a34a; }
+.bubble-status[data-state="draft"] { color: #d97706; }
+.bubble-status[data-state="empty"] { color: transparent; }
+
+/* multimodal — image attachment in bubble */
+.comment-bubble .attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.comment-bubble .attachments:empty { display: none; }
+.comment-bubble .thumb {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #e5e5e5;
+  background: #f9fafb;
+}
+.comment-bubble .thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.comment-bubble .thumb-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.comment-bubble .btn-attach {
+  border: 1px solid #d1d5db;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  margin-right: auto;
+}
+.comment-bubble .btn-attach:hover { background: #f3f4f6; }
+.comment-bubble .file-input { display: none; }
+.comment-bubble.dragging-over {
+  outline: 2px dashed #2563eb;
+  outline-offset: -2px;
 }
