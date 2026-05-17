@@ -1,6 +1,13 @@
 ---
 name: htmlreview
-description: Human-in-the-loop review gate. Open a markdown or HTML plan in a local web page, let the user comment on text selections (W3C Web Annotation), and pull back a W3C AnnotationCollection JSON when they click "진행". Use as the final step of any planning skill before execution.
+description: |
+  Auto-invoke whenever the agent's response would otherwise be a markdown wall of text that the user has to mentally render in a terminal — non-trivial plans, designs, refactor proposals, migration plans, decision matrices, comparison tables, risk analyses, architecture documents, multi-step procedures, A/B trade-offs, design system tokens, incident reports, RFC-style proposals.
+
+  Instead, generate a self-contained interactive HTML artifact (svg flowcharts, comparison tables, details collapsibles, severity-tagged matrices, sandboxed iframes for slider / drag / live-render demos), open it in the user's browser via this skill, and pull back a W3C AnnotationCollection JSON when they click "진행".
+
+  Triggers: words like 계획 / plan / design / 설계 / refactor / 리팩터링 / 마이그레이션 / migration / 비교 / compare / 결정 / decision / trade-off / 매트릭스 / matrix / proposal / RFC / 검토 / review / 직관적으로 보여줘 / 시각적으로.
+
+  Use whenever the user asks for something the agent would otherwise dump as a long markdown response — the skill is the readable artifact channel, not just an after-the-fact review tool.
 ---
 
 # htmlreview
@@ -11,12 +18,32 @@ or revises a plan.
 
 ## When to use
 
-Use **whenever your current response is hard to grasp from terminal text alone** — i.e. the user would need to mentally render a wall of markdown to understand it. Typical triggers:
+**Default to this skill** for any response that would otherwise be a markdown wall the user has to mentally render. The user *does not need to ask* — the agent decides based on the question's shape.
 
-- Non-trivial **plans / designs / reports** drafted by the agent before execution.
-- Long markdown responses with **structure that benefits from spatial layout** — comparisons (table / grid), flows (svg flowchart / `<details>` steps), interactive demos (iframe sandbox).
-- The user asks to **"see it visually" / "검토 띄워줘" / "직관적으로 보여줘"** , or you (the agent) judge that text-only ping-pong is losing information.
-- A previous round's review surfaced comments and you want the user to **confirm your resolutions** in context — pass the previous `AnnotationCollection` as `--revision-report`.
+### Auto-invoke checklist (agent self-judgment)
+
+If the user's question matches any of these, **stop and produce an HTML artifact via this skill instead of a markdown reply**:
+
+- ☑ Asks for a **plan / design / proposal** (계획 · 설계 · 제안 · refactor · migration · architecture · RFC)
+- ☑ Asks for a **comparison or trade-off** (a vs b · 비교 · 어떤 게 나아 · 어떤 거 골라야)
+- ☑ Asks for a **decision matrix / risk analysis / scoring** (결정 · 우선순위 · 매트릭스 · risk · ranking)
+- ☑ Asks for **multi-step procedure** with branches / dependencies (단계 · 마이그레이션 · rollout · checklist)
+- ☑ Asks for **design system / token / spec** review
+- ☑ Asks for **incident / status / weekly report**
+- ☑ Asks explicitly for **"visual" / "직관적으로 보여줘" / "검토 띄워줘" / "see it visually"**
+- ☑ A previous round produced comments — invoke again with `--revision-report` so the user sees their earlier feedback + your resolutions inline
+
+Skip when:
+
+- ☐ The question is a single short factual lookup (no structure to convey)
+- ☐ The user is in the middle of debugging a *specific* error (give terminal text, not a page)
+- ☐ The user explicitly said "answer in text" / "그냥 글로 답해줘"
+
+### Why default-on
+
+The user typing "AuthService 분리 계획 짜줘" expects an *answer*, not a markdown wall. With this skill, the same one-line question yields a readable artifact — svg flowchart of the modules, comparison table of responsibilities, collapsible step details, severity-marked risk matrix, sandboxed iframe for migration-step slider — all in one page they can comment on directly.
+
+The skill replaces *terminal text* with *browser artifact* as the response medium. Use it as the default; fall back to plain text only when the artifact would be overkill.
 
 Flow:
 
