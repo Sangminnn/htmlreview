@@ -1,13 +1,21 @@
 ---
 name: htmlreview
 description: |
-  Auto-invoke whenever the agent's response would otherwise be a markdown wall of text that the user has to mentally render in a terminal — non-trivial plans, designs, refactor proposals, migration plans, decision matrices, comparison tables, risk analyses, architecture documents, multi-step procedures, A/B trade-offs, design system tokens, incident reports, RFC-style proposals.
+  Skim-bait → Anchored. Wall → Window.
 
-  Instead, generate a self-contained interactive HTML artifact (svg flowcharts, comparison tables, details collapsibles, severity-tagged matrices, sandboxed iframes for slider / drag / live-render demos), open it in the user's browser via this skill, and pull back a W3C AnnotationCollection JSON when they click "진행".
+  Claude 의 응답이 markdown 한 화면을 넘는 시점에 끼어드는 게이트. 답변의 매체를 *터미널 markdown* 에서 *브라우저 HTML 산출물* 로 분기해 — 사용자가 skim 대신 read + 직접 영역에 코멘트하게 만든다.
 
-  Triggers: words like 계획 / plan / design / 설계 / refactor / 리팩터링 / 마이그레이션 / migration / 비교 / compare / 결정 / decision / trade-off / 매트릭스 / matrix / proposal / RFC / 검토 / review / 직관적으로 보여줘 / 시각적으로.
+  분기 결정은 **keyword 매칭이 아닌 *응답 모양 예측 기반 self-recognition***. 다음 3가지 신호 중 **둘 이상** 매칭이면 markdown 응답 대신 self-contained .html 산출물 생성 + htmlreview 호출:
 
-  Use whenever the user asks for something the agent would otherwise dump as a long markdown response — the skill is the readable artifact channel, not just an after-the-fact review tool.
+  (a) Pain phrase — 답이 skim-bait 임이 self-evident: 한 화면 초과 / 비교가 머리속 grid 가 되어야 함 / 단계 사이 의존성 / 결정 차원 3+ / 시각화 (flowchart · 색 swatch · timeline) 없이 전달 어려움.
+
+  (b) Quantified metric — 예상 응답 모양 측정치: line > 80, 시각 요소 (table / 큰 list / diagram) ≥ 2, 비교 대상 ≥ 3, 의존성 있는 단계 ≥ 5, trade-off 차원 ≥ 3, heading 깊이 ≥ 3.
+
+  (c) Pain scenario 직접 매칭 — 대표 case 의 *형태*: "X vs Y vs Z 결정", "X 분리 계획 / 리팩터링", "마이그레이션 단계별 위험도", "디자인 시스템 토큰 정리", "인시던트 리포트", "RFC / proposal / design doc", 또는 사용자가 "직관적으로 보여줘 / 시각적으로 / 검토 띄워줘" 등 명시.
+
+  Skip when: 단순 factual lookup (정의 한 줄), 특정 debug (라인 N 의 X 에러), 사용자가 명시적으로 "글로 답해 / 텍스트로", chat / 인사 / clarifying question.
+
+  복잡한 답을 markdown 으로 주면 *사용자는 반드시 skim*. 트레이드오프·의존성·미묘한 차이가 누락되는 걸 *사용자가 모름*. HTML 산출물로 분기하면 브라우저의 진짜 렌더링 (svg / iframe / css animation) + 영역 코멘트 + 멀티모달 (이미지 첨부) + 다음 라운드의 revision-report 사이드바.
 ---
 
 # htmlreview
@@ -16,43 +24,67 @@ Local web review gate for markdown and HTML documents. Pulls back
 **W3C-compliant annotations** (`TextQuoteSelector`) when the user approves
 or revises a plan.
 
-## When to use
+## When to use — *응답 매체 분기 정책*
 
-**Default to this skill** for any response that would otherwise be a markdown wall the user has to mentally render. The user *does not need to ask* — the agent decides based on the question's shape.
+이 skill 의 본질: **Claude 가 답을 시작하기 전 self-question** — "내 답이 어떻게 생길까?"
 
-### Auto-invoke checklist (agent self-judgment)
+답을 markdown 으로 그대로 주면 사용자가 *skim* 한다. 트레이드오프·의존성·미묘한 차이가 누락되고, 누락됐다는 걸 사용자가 *모른다*. 그래서 응답 매체 자체를 *분기*: 단순하면 markdown 그대로, 복잡하면 self-contained HTML 산출물 + htmlreview 호출.
 
-If the user's question matches any of these, **stop and produce an HTML artifact via this skill instead of a markdown reply**:
+분기 결정은 **3-signal self-recognition** — keyword 매칭 아님, 응답 모양 예측 기반.
 
-- ☑ Asks for a **plan / design / proposal** (계획 · 설계 · 제안 · refactor · migration · architecture · RFC)
-- ☑ Asks for a **comparison or trade-off** (a vs b · 비교 · 어떤 게 나아 · 어떤 거 골라야)
-- ☑ Asks for a **decision matrix / risk analysis / scoring** (결정 · 우선순위 · 매트릭스 · risk · ranking)
-- ☑ Asks for **multi-step procedure** with branches / dependencies (단계 · 마이그레이션 · rollout · checklist)
-- ☑ Asks for **design system / token / spec** review
-- ☑ Asks for **incident / status / weekly report**
-- ☑ Asks explicitly for **"visual" / "직관적으로 보여줘" / "검토 띄워줘" / "see it visually"**
-- ☑ A previous round produced comments — invoke again with `--revision-report` so the user sees their earlier feedback + your resolutions inline
+### (a) Pain phrase — *내 답이 skim-bait 모양인가*
 
-Skip when:
+- ☐ 응답이 터미널 한 화면 (보통 25~50 줄) 을 명백히 넘는다
+- ☐ 비교가 머리속에서 *grid* 가 되어야 한다 (3+ 대상)
+- ☐ 단계 사이 *의존성* 이 있다 (1단계 후 2, 2+3 합쳐서 4 등)
+- ☐ 결정 *trade-off 차원* 이 3+ 이다 (security × performance × cost 등)
+- ☐ 시각화 (flowchart / 색 swatch / timeline) 없이 전달 어렵다
 
-- ☐ The question is a single short factual lookup (no structure to convey)
-- ☐ The user is in the middle of debugging a *specific* error (give terminal text, not a page)
-- ☐ The user explicitly said "answer in text" / "그냥 글로 답해줘"
+### (b) Quantified metric — *예상 응답 모양 측정치*
 
-### Why default-on
+| 측정 항목 | 임계 |
+|---|---|
+| 예상 line 수 | > 80 |
+| markdown table / 큰 list / 다이어그램 | ≥ 2 |
+| 비교 대상 수 | ≥ 3 |
+| 의존성 있는 단계 | ≥ 5 |
+| 결정 차원 (축) | ≥ 3 |
+| heading 깊이 (## 안 ### 안 ####) | ≥ 3 levels |
 
-The user typing "AuthService 분리 계획 짜줘" expects an *answer*, not a markdown wall. With this skill, the same one-line question yields a readable artifact — svg flowchart of the modules, comparison table of responsibilities, collapsible step details, severity-marked risk matrix, sandboxed iframe for migration-step slider — all in one page they can comment on directly.
+### (c) Pain scenario 직접 매칭
 
-The skill replaces *terminal text* with *browser artifact* as the response medium. Use it as the default; fall back to plain text only when the artifact would be overkill.
+사용자 메시지의 *형태* 가 다음 중 하나면 즉시 매칭:
 
-Flow:
+- "X vs Y vs Z 결정 / 비교 / 어떤 게 나아"
+- "X 분리 계획 / 리팩터링 / 마이그레이션"
+- "단계별 위험도 / 롤아웃 plan"
+- "디자인 시스템 / token 정리 / spec"
+- "인시던트 리포트 / 주간 status"
+- "RFC / proposal / design doc / architecture review"
+- 사용자가 "직관적으로 보여줘 / 시각적으로 / 검토 띄워줘" 등 명시 발화
+- 이전 라운드에 코멘트가 있어 *revision-report* 와 함께 다시 띄워야 함
 
-1. The agent crafts the artifact (see *Authoring guidance* below).
-2. The user reviews the page in their browser — hover/click/drag for comments, optionally attach images.
-3. When they click *진행* the CLI exits with status 0 and emits a W3C `AnnotationCollection` on stdout.
-4. Parse `status`:
-   - `"approved"` → proceed.
-   - `"revision_requested"` → fold the comments back into the artifact, then call this skill again with the previous output as `--revision-report`.
+### 결정 규칙
+
+**(a) (b) (c) 중 둘 이상 매칭** → markdown 응답 안 함, 대신 self-contained `.html` 산출물 생성 + `htmlreview <file>` 호출.
+
+### Skip when
+
+- ☐ 단순 factual lookup ("Redis 가 뭐야", "함수 정의가?")
+- ☐ 특정 debug ("line 32 NullPointerException", "이 stack trace")
+- ☐ 사용자가 명시적으로 "글로 답해 / 텍스트로 / just text"
+- ☐ chat / 인사 / clarifying question / yes-no
+
+### Flow
+
+1. Claude 가 self-recognition → 분기 결정
+2. *(분기 안 함)* markdown 응답 그대로
+3. *(분기)* self-contained `.html` 작성 → `htmlreview <file>` 실행 (background)
+4. 사용자가 브라우저에서 hover/click/drag 로 영역 코멘트 (이미지 첨부 가능)
+5. *진행* 클릭 → stdout 으로 W3C `AnnotationCollection` JSON
+6. Claude 가 status 분기:
+   - `"approved"` → 실행 진행
+   - `"revision_requested"` → 코멘트 반영해서 `.html` 갱신 → `htmlreview --revision-report <prev.json>` 으로 다시 호출
 
 ## Authoring guidance — *make it readable, not skim-bait*
 
