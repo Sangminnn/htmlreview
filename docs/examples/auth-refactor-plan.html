@@ -1,0 +1,175 @@
+<h1 id="overview">AuthService 분리 계획</h1>
+
+<p>800줄 모놀리식 <code>AuthService</code> 클래스를 세 개의 책임 단위로 분리. 변경 영향 범위 축소 + 단위 테스트 격리 + 정책 변경 용이성이 목표.</p>
+
+<style>
+.card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 1em 0; }
+.card { padding: 12px 14px; border: 1px solid #e5e5e5; border-radius: 6px; background: #fafafa; }
+.card h3 { margin: 0 0 6px 0; font-size: 14px; color: #1f2937; }
+.card p { margin: 0; font-size: 13px; color: #4b5563; }
+.severity-high { background: #fee2e2; color: #b91c1c; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.severity-mid { background: #fef3c7; color: #b45309; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.severity-low { background: #dcfce7; color: #166534; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+</style>
+
+<h2 id="now-vs-after">현재 vs 분리 후</h2>
+
+<div class="card-grid">
+  <div class="card">
+    <h3>현재 — <code>AuthService</code> 단일 클래스</h3>
+    <p>JWT 검증 / 세션 관리 / 권한 체크 → 한 클래스 800줄. 변경 영향 큼, 통합 테스트 의존.</p>
+  </div>
+  <div class="card">
+    <h3>분리 후 — 책임별 3 클래스</h3>
+    <p>JwtVerifier / SessionStore / PermissionChecker. 각각 독립 단위 테스트, 정책 교체 시 한 클래스만 수정.</p>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>책임</th><th>현재 메서드</th><th>분리 후 클래스</th><th>의존성</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>토큰 검증·갱신</td>
+      <td><code>verifyToken()</code> / <code>refreshToken()</code></td>
+      <td><code>JwtVerifier</code></td>
+      <td>JWKS provider 만</td>
+    </tr>
+    <tr>
+      <td>세션 영속화</td>
+      <td><code>getSession()</code> / <code>setSession()</code> / <code>invalidate()</code></td>
+      <td><code>SessionStore</code></td>
+      <td>Redis client</td>
+    </tr>
+    <tr>
+      <td>권한 정책 평가</td>
+      <td><code>checkPermission()</code> / <code>checkRole()</code></td>
+      <td><code>PermissionChecker</code></td>
+      <td>정책 DSL 파서</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="flow">분리 후 호출 관계</h2>
+
+<figure>
+  <svg viewBox="0 0 640 200" width="100%" height="200">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f2937"/>
+      </marker>
+    </defs>
+    <!-- Controller -->
+    <rect x="20" y="80" width="120" height="40" fill="#e5e7eb" stroke="#6b7280" rx="4"/>
+    <text x="80" y="105" font-size="13" text-anchor="middle">Controller</text>
+    <!-- AuthFacade (slim) -->
+    <rect x="200" y="80" width="140" height="40" fill="#dbeafe" stroke="#2563eb" stroke-width="2" rx="4"/>
+    <text x="270" y="105" font-size="13" text-anchor="middle" font-weight="600">AuthService (slim)</text>
+    <!-- Three modules -->
+    <rect x="420" y="10" width="180" height="40" fill="#fef3c7" stroke="#f59e0b" stroke-width="2" rx="4"/>
+    <text x="510" y="35" font-size="13" text-anchor="middle">JwtVerifier</text>
+    <rect x="420" y="80" width="180" height="40" fill="#fef3c7" stroke="#f59e0b" stroke-width="2" rx="4"/>
+    <text x="510" y="105" font-size="13" text-anchor="middle">SessionStore</text>
+    <rect x="420" y="150" width="180" height="40" fill="#fef3c7" stroke="#f59e0b" stroke-width="2" rx="4"/>
+    <text x="510" y="175" font-size="13" text-anchor="middle">PermissionChecker</text>
+    <!-- Arrows -->
+    <line x1="140" y1="100" x2="200" y2="100" stroke="#1f2937" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="340" y1="95" x2="420" y2="35" stroke="#1f2937" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="340" y1="100" x2="420" y2="100" stroke="#1f2937" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="340" y1="105" x2="420" y2="170" stroke="#1f2937" stroke-width="2" marker-end="url(#arr)"/>
+  </svg>
+  <figcaption>호출 흐름 — Controller → AuthService(facade) → 세 모듈로 위임</figcaption>
+</figure>
+
+<h2 id="steps">단계 (각 단계 클릭으로 펼침)</h2>
+
+<details>
+  <summary><strong>1. 새 인터페이스 정의</strong> · 1주</summary>
+  <p>세 클래스의 public 인터페이스를 TypeScript interface 로 먼저 정의. 구현 없이 contract 만:</p>
+  <pre><code class="language-ts">interface JwtVerifier {
+  verify(token: string): Promise&lt;Claims&gt;;
+  refresh(token: string): Promise&lt;string&gt;;
+}
+interface SessionStore {
+  get(id: string): Promise&lt;Session | null&gt;;
+  set(id: string, session: Session, ttl?: number): Promise&lt;void&gt;;
+  invalidate(id: string): Promise&lt;void&gt;;
+}
+interface PermissionChecker {
+  check(claims: Claims, action: string, resource: string): Promise&lt;boolean&gt;;
+}</code></pre>
+  <p>이 단계가 가장 중요. 인터페이스가 명확해야 다음 단계 위임이 쉬움.</p>
+</details>
+
+<details>
+  <summary><strong>2. 신규 클래스 구현 + 단위 테스트</strong> · 2주</summary>
+  <p>각 클래스 구현 + 단위 테스트. 현재 <code>AuthService</code> 코드를 *복사* 하여 새 클래스에 이식 (이때까지 AuthService 는 그대로).</p>
+  <ul>
+    <li>JwtVerifier — JWKS mock 으로 단위 테스트</li>
+    <li>SessionStore — Redis mock 또는 in-memory Map 테스트</li>
+    <li>PermissionChecker — 정책 fixture 로 테이블 테스트</li>
+  </ul>
+</details>
+
+<details>
+  <summary><strong>3. AuthService 에서 신규 모듈로 위임</strong> · 2주</summary>
+  <p><code>AuthService</code> 의 메서드 본체를 *thin wrapper* 로 교체 — 실제 로직은 새 클래스로 위임. 호출자(Controller)는 그대로.</p>
+  <pre><code class="language-ts">class AuthService {
+  constructor(
+    private jwt: JwtVerifier,
+    private sessions: SessionStore,
+    private perms: PermissionChecker,
+  ) {}
+
+  // 기존 메서드 → 위임만
+  verifyToken(token: string) { return this.jwt.verify(token); }
+  getSession(id: string) { return this.sessions.get(id); }
+  // ... 50곳 호출처는 영향 없음
+}</code></pre>
+</details>
+
+<details>
+  <summary><strong>4. AuthService 슬림화 + deprecated 별칭 유지</strong> · 1주</summary>
+  <p>점진적 deprecation — AuthService 의 메서드를 deprecated 표시하되 *별칭으로 유지*. Controller 들이 한 번에 깨지지 않도록.</p>
+  <p>4a (위임) → 4b (alias 유지 6주) → 4c (alias 제거 + Controller 직접 호출 변경) 세 단계로 쪼개기.</p>
+</details>
+
+<h2 id="risks">리스크 매트릭스</h2>
+
+<table>
+  <thead>
+    <tr><th>리스크</th><th>심각도</th><th>완화</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>호출처 50곳 — 마이그레이션 단계에서 호환 레이어 깨질 위험</td>
+      <td><span class="severity-high">높음</span></td>
+      <td>4단계 alias 유지 (6주). 깨질 호출처는 grep + CI 에서 미리 잡음</td>
+    </tr>
+    <tr>
+      <td>분리 후 트랜잭션 경계 재검토 필요 — 세션 + 권한 동시 update 케이스</td>
+      <td><span class="severity-mid">중간</span></td>
+      <td>두 책임 동시 호출 케이스를 AuthService facade 에서 트랜잭션으로 묶음</td>
+    </tr>
+    <tr>
+      <td>JwtVerifier 의 JWKS provider 캐싱 정책 변경 — 기존과 미세 다른 만료 동작</td>
+      <td><span class="severity-low">낮음</span></td>
+      <td>JWKS provider 인터페이스를 그대로 가져옴 → 동일 동작</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="demo">마이그레이션 진행 시뮬레이션</h2>
+
+<p>step slider 로 각 단계의 상태를 미리 시각화:</p>
+
+<iframe sandbox="allow-scripts" width="100%" height="280" srcdoc='<!DOCTYPE html><html><head><style>body{font-family:-apple-system,sans-serif;padding:16px;margin:0;background:#fafafa}.row{margin-bottom:12px}label{font-size:13px;color:#374151;font-weight:600;margin-right:8px}input[type=range]{vertical-align:middle;width:280px}.status{margin-top:14px;padding:12px;border-radius:6px;border:1px solid #e5e5e5;background:white;font-size:13px;line-height:1.7}.s-box{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;margin-right:6px}.s-old{background:#fee2e2;color:#b91c1c}.s-new{background:#dcfce7;color:#166534}.s-mix{background:#fef3c7;color:#b45309}</style></head><body><div class="row"><label for="r">마이그레이션 단계</label><input type="range" id="r" min="0" max="4" value="0" step="1"><span id="v" style="font-weight:600;color:#2563eb;margin-left:8px">0</span> / 4</div><div class="status" id="s"></div><script>const states=[{label:"시작",auth:"old",jwt:"old",sess:"old",perm:"old",text:"AuthService 단일 클래스. 호출처 50곳 그대로."},{label:"1단계",auth:"old",jwt:"mix",sess:"mix",perm:"mix",text:"인터페이스 정의 완료. 구현은 아직 AuthService 안."},{label:"2단계",auth:"old",jwt:"new",sess:"new",perm:"new",text:"세 클래스 구현 + 단위 테스트 완료. 아직 AuthService 가 호출되는 중."},{label:"3단계",auth:"mix",jwt:"new",sess:"new",perm:"new",text:"AuthService 가 새 모듈로 위임 시작. Controller 는 여전히 AuthService 만 호출."},{label:"4단계",auth:"new",jwt:"new",sess:"new",perm:"new",text:"AuthService 슬림화 완료. deprecated 별칭은 6주간 유지."}];const r=document.getElementById("r"),v=document.getElementById("v"),s=document.getElementById("s");function box(c,t){return `<span class="s-box s-${c}">${t}</span>`}function render(){const st=states[+r.value];v.textContent=st.label;s.innerHTML=`${box(st.auth,"AuthService")} ${box(st.jwt,"JwtVerifier")} ${box(st.sess,"SessionStore")} ${box(st.perm,"PermissionChecker")}<br><br>${st.text}`}r.addEventListener("input",render);render();</script></body></html>'></iframe>
+
+<h2 id="next">다음 액션</h2>
+
+<ol>
+  <li>이 계획에 대해 본 페이지에서 코멘트 (블록 클릭 또는 드래그)</li>
+  <li><strong>진행</strong> 클릭 — 코멘트 없으면 <code>approved</code>, 있으면 <code>revision_requested</code></li>
+  <li>agent 가 결과 받고 (a) 실행 또는 (b) 코멘트 반영 후 다음 라운드</li>
+</ol>
