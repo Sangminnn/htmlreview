@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Playwright 로 docs/demo.md + demo-revision.json 기반 스크린샷 3장 자동 캡처.
-// 산출물: docs/screenshots/{main,bubble,revision}.png
+// Playwright 로 docs/demo.md + demo-revision.json 기반 스크린샷 자동 캡처.
+// 산출물: docs/screenshots/{main,bubble,revision,conversation-review}.png
 
 import { spawn } from "node:child_process";
 import { mkdir } from "node:fs/promises";
@@ -15,6 +15,7 @@ const outDir = join(repoRoot, "docs", "screenshots");
 const VIEWPORT = { width: 1440, height: 900 };
 const DEMO_MD = join(repoRoot, "docs", "demo.md");
 const DEMO_REVISION = join(repoRoot, "docs", "demo-revision.json");
+const CONVERSATION_REVIEW = join(repoRoot, "docs", "examples", "conversation-review.json");
 
 const waitForUrl = (proc) =>
   new Promise((resolve, reject) => {
@@ -32,8 +33,8 @@ const waitForUrl = (proc) =>
     setTimeout(() => reject(new Error("timeout waiting for htmlreview URL")), 10_000);
   });
 
-const startBin = async (extraArgs = []) => {
-  const args = ["bin/htmlreview.mjs", DEMO_MD, "--no-open", "--title", "htmlreview demo", ...extraArgs];
+const startBin = async (extraArgs = [], file = DEMO_MD) => {
+  const args = ["bin/htmlreview.mjs", file, "--no-open", "--title", "htmlreview demo", ...extraArgs];
   const proc = spawn("node", args, { cwd: repoRoot, stdio: ["ignore", "pipe", "pipe"] });
   const url = await waitForUrl(proc);
   return { proc, url };
@@ -105,6 +106,18 @@ const captureRevision = async (browser) => {
   }
 };
 
+const captureConversationReview = async (browser) => {
+  const { proc, url } = await startBin(["--preset", "conversation-review"], CONVERSATION_REVIEW);
+  try {
+    const { context, page } = await newPage(browser, url);
+    await page.waitForSelector(".review-shell .hero");
+    await page.screenshot({ path: join(outDir, "conversation-review.png"), fullPage: false });
+    await context.close();
+  } finally {
+    await stopBin(proc, url);
+  }
+};
+
 const main = async () => {
   await mkdir(outDir, { recursive: true });
   const browser = await chromium.launch();
@@ -112,10 +125,11 @@ const main = async () => {
     await captureMain(browser);
     await captureBubble(browser);
     await captureRevision(browser);
+    await captureConversationReview(browser);
   } finally {
     await browser.close();
   }
-  console.log("captured: docs/screenshots/{main,bubble,revision}.png");
+  console.log("captured: docs/screenshots/{main,bubble,revision,conversation-review}.png");
 };
 
 main().catch((err) => {

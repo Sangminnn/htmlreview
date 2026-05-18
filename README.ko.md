@@ -15,6 +15,10 @@
 |---|---|
 | ![코멘트 버블](https://raw.githubusercontent.com/Sangminnn/htmlreview/main/docs/screenshots/bubble.png) | ![revision 사이드바](https://raw.githubusercontent.com/Sangminnn/htmlreview/main/docs/screenshots/revision.png) |
 
+### Conversation review preset
+
+![Conversation review preset](https://raw.githubusercontent.com/Sangminnn/htmlreview/main/docs/screenshots/conversation-review.png)
+
 ## 설치
 
 ```bash
@@ -35,6 +39,9 @@ htmlreview design.html
 
 # 다음 라운드 — 이전 라운드 코멘트와 반영 내역을 사이드바에 표시
 htmlreview revised.md --revision-report round-1.json
+
+# Conversation review — assistant 응답을 시각적 리뷰 산출물로 변환
+htmlreview docs/examples/conversation-review.json --preset conversation-review
 ```
 
 | 옵션 | 기본값 | 비고 |
@@ -43,10 +50,33 @@ htmlreview revised.md --revision-report round-1.json
 | `--port <n>` | random ephemeral | HTTP 포트 |
 | `--no-open` | — | 브라우저 자동 열기 안 함 |
 | `--input-format <md\|html>` | 확장자 추론 | 입력 형식 강제 |
+| `--preset <name>` | — | 입력을 리뷰 전에 변환. 지원: `conversation-review` |
 | `--revision-report <file>` | — | 이전 라운드 `AnnotationCollection` JSON |
 | `--timeout <seconds>` | — | N초 내 제출 없으면 실패 종료 |
 | `-v / --version` | — | 버전 출력 |
 | `-h / --help` | — | 도움말 |
+
+## Conversation review preset
+
+agent 응답이 그대로 두면 skim-bait 이 될 때 사용합니다: 비교, 롤아웃 계획, 마이그레이션 위험도, 아키텍처 결정처럼 원문보다 구조 파악이 중요한 답변입니다.
+
+입력은 JSON 입니다:
+
+```json
+{
+  "title": "Checkout migration review",
+  "userText": "We need to migrate checkout from a legacy session-based flow to a new payment orchestration service. Compare three rollout strategies, show the risks for inventory reservation and coupon rollback, and propose a phased plan that support, backend, and frontend can all review.",
+  "assistantText": "## Recommendation\n\nUse a shadow-write rollout first..."
+}
+```
+
+실행:
+
+```bash
+htmlreview docs/examples/conversation-review.json --preset conversation-review
+```
+
+preset은 시각화 필요도 점수, 감지된 신호, 문서 밀도, 구조 지도, 핵심 항목 후보, 접을 수 있는 원문 응답을 포함한 self-contained HTML 산출물을 만듭니다. 목표는 markdown을 HTML로 감싸는 것이 아니라, 텍스트 벽을 브라우저에서 검토 가능한 화면으로 바꾸는 것입니다.
 
 ## 출력 schema
 

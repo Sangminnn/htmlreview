@@ -3,6 +3,7 @@ import { parseArgs } from "node:util";
 import { readFile, access } from "node:fs/promises";
 import { dirname, join, extname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { renderConversationReviewFromJson } from "../src/conversation-review.mjs";
 import { runReview } from "../src/server.mjs";
 
 const HELP = `Usage: htmlreview [options] [file]
@@ -15,6 +16,7 @@ Options:
   --port <n>                  HTTP port (default: random ephemeral)
   --no-open                   Don't auto-open browser
   --input-format <md|html>    Force input format (default: inferred from extension; "md" for stdin)
+  --preset <name>             Transform input before review. Supported: conversation-review
   --revision-report <file>    Previous-round comments as W3C AnnotationCollection JSON.
                               Renders left sidebar + in-content "변경됨" badges.
   --timeout <s>               Auto-fail if no submission within N seconds
@@ -26,6 +28,7 @@ Input:
     htmlreview plan.md
     cat plan.md | htmlreview --input-format md
     htmlreview design.html
+    htmlreview conversation.json --preset conversation-review
 
 Output:
   W3C AnnotationCollection JSON to stdout. Exit code 0 on submit.
@@ -72,6 +75,7 @@ const main = async () => {
         port: { type: "string" },
         "no-open": { type: "boolean" },
         "input-format": { type: "string" },
+        preset: { type: "string" },
         "revision-report": { type: "string" },
         timeout: { type: "string" },
         help: { type: "boolean", short: "h" },
@@ -132,7 +136,20 @@ const main = async () => {
     }
   }
 
-  const format = inferFormat(file, values["input-format"]);
+  let format = inferFormat(file, values["input-format"]);
+  if (values.preset) {
+    if (values.preset !== "conversation-review") {
+      process.stderr.write(`error: unsupported preset: ${values.preset}\n`);
+      process.exit(2);
+    }
+    try {
+      input = renderConversationReviewFromJson(input);
+      format = "text/html";
+    } catch (err) {
+      process.stderr.write(`error: ${err.message}\n`);
+      process.exit(1);
+    }
+  }
 
   const port = values.port ? parseInt(values.port, 10) : 0;
   if (Number.isNaN(port) || port < 0 || port > 65535) {

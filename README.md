@@ -19,6 +19,10 @@ conformant annotation tool — no bespoke JSON shape.
 |---|---|
 | ![Comment bubble](https://raw.githubusercontent.com/Sangminnn/htmlreview/main/docs/screenshots/bubble.png) | ![Revision sidebar](https://raw.githubusercontent.com/Sangminnn/htmlreview/main/docs/screenshots/revision.png) |
 
+### Conversation review preset
+
+![Conversation review preset](https://raw.githubusercontent.com/Sangminnn/htmlreview/main/docs/screenshots/conversation-review.png)
+
 ## Install
 
 ```bash
@@ -39,6 +43,9 @@ htmlreview design.html
 
 # Multi-round — show previous round's comments + your resolutions in sidebar
 htmlreview revised.md --revision-report round-1.json
+
+# Conversation review — turn assistant output into a visual review artifact
+htmlreview docs/examples/conversation-review.json --preset conversation-review
 ```
 
 | Option | Default | Notes |
@@ -47,10 +54,38 @@ htmlreview revised.md --revision-report round-1.json
 | `--port <n>` | random ephemeral | HTTP port |
 | `--no-open` | — | Don't auto-open browser |
 | `--input-format <md\|html>` | inferred from ext (`.md`/`.html`) | Force input format |
+| `--preset <name>` | — | Transform input before review. Supported: `conversation-review` |
 | `--revision-report <file>` | — | Previous round `AnnotationCollection` JSON |
 | `--timeout <seconds>` | — | Auto-fail if no submit within N seconds |
 | `-v / --version` | — | Print version |
 | `-h / --help` | — | Print help |
+
+## Conversation review preset
+
+Use this when an agent response would otherwise become skim-bait: comparisons,
+rollout plans, migration risk notes, architecture decisions, or any answer where
+structure matters more than raw prose.
+
+Input is JSON:
+
+```json
+{
+  "title": "Checkout migration review",
+  "userText": "We need to migrate checkout from a legacy session-based flow to a new payment orchestration service. Compare three rollout strategies, show the risks for inventory reservation and coupon rollback, and propose a phased plan that support, backend, and frontend can all review.",
+  "assistantText": "## Recommendation\n\nUse a shadow-write rollout first..."
+}
+```
+
+Run:
+
+```bash
+htmlreview docs/examples/conversation-review.json --preset conversation-review
+```
+
+The preset creates a self-contained HTML artifact with visual need scoring,
+detected signals, density metrics, a structure map, key item extraction, and a
+collapsible original response. The goal is not to wrap markdown in HTML; it is
+to turn a wall into a browser-native review surface.
 
 ## Output schema
 
